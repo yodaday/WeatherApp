@@ -23,17 +23,31 @@ function Weather() {
       const response = await fetch(
         `https://api.weatherstack.com/current?access_key=${API_KEY}&query=${city}`
       );
+
       if (response.ok) {
         const data = await response.json();
+
+        // Check if the city is valid based on API response
+        if (!data || !data.current) {
+          setError({
+            message: "City not found. Please check the name and try again.",
+          });
+          setWeather(null);
+          return;
+        }
+
+        // If data is valid, update weather state
         setWeather(data);
         setError(null);
       } else {
         const error = await response.json();
-        setError(error);
+        setError({
+          message: error.error.info || "Failed to fetch weather data.",
+        });
         setWeather(null);
       }
     } catch (error) {
-      setError(error);
+      setError({ message: "An unexpected error occurred. Please try again." });
       setWeather(null);
     }
   }
