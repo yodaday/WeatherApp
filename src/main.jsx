@@ -6,12 +6,14 @@ import WeatherInfo from "./components/WeatherInfo";
 import Error from "./components/Error";
 import "./styles/weather.css";
 
+const API_KEY = "874fd710b6acf007664d80ee6ed6ff55";
+
+const flickrAPIKey = "c57b877d90b02109a7131b8576f897bc";
+
 function Weather() {
   const [city, setCity] = useState("");
   const [weather, setWeather] = useState(null);
   const [error, setError] = useState(null);
-
-  const API_KEY = "874fd710b6acf007664d80ee6ed6ff55";
 
   async function fetchWeather() {
     if (!city) {
@@ -20,15 +22,16 @@ function Weather() {
     }
 
     try {
-      const response = await fetch(
+      // Fetch weather data from WeatherStack API
+      const weatherResponse = await fetch(
         `https://api.weatherstack.com/current?access_key=${API_KEY}&query=${city}`
       );
 
-      if (response.ok) {
-        const data = await response.json();
+      if (weatherResponse.ok) {
+        const weatherData = await weatherResponse.json();
 
-        // Check if the city is valid based on API response
-        if (!data || !data.current) {
+        // Check if the city is valid
+        if (!weatherData || !weatherData.current) {
           setError({
             message: "City not found. Please check the name and try again.",
           });
@@ -36,11 +39,34 @@ function Weather() {
           return;
         }
 
-        // If data is valid, update weather state
-        setWeather(data);
+        // Update weather state
+        setWeather(weatherData);
         setError(null);
+
+        const imageResponse = await fetch(
+          `https://api.flickr.com/services/rest/?method=flickr.photos.search&api_key=${flickrAPIKey}&tags=${city}&format=json&nojsoncallback=1`
+        );
+
+        if (imageResponse.ok) {
+          const imageData = await imageResponse.json();
+          const photo = imageData.photos.photo[0]; // Get the first image
+
+          // Construct the image URL
+          const imageUrl = `https://farm${photo.farm}.static.flickr.com/${photo.server}/${photo.id}_${photo.secret}.jpg`;
+
+          // Update background image based on city
+          if (imageUrl) {
+            document.body.style.backgroundImage = `url(${imageUrl})`;
+            document.body.style.backgroundSize = "cover";
+            document.body.style.backgroundPosition = "center center";
+          } else {
+            setError({ message: "No images found for this city" });
+          }
+        } else {
+          setError({ message: "Failed to fetch image from Flickr" });
+        }
       } else {
-        const error = await response.json();
+        const error = await weatherResponse.json();
         setError({
           message: error.error.info || "Failed to fetch weather data.",
         });
@@ -53,10 +79,10 @@ function Weather() {
   }
 
   return (
-    <div className="weather">
-      <WeatherInput city={city} setCity={setCity} fetchWeather={fetchWeather} />
+    <div>
+      <WeatherInput setCity={setCity} fetchWeather={fetchWeather} />
+      {error && <Error message={error.message} />}
       {weather && <WeatherInfo weather={weather} />}
-      {error && <Error error={error} />}
     </div>
   );
 }
